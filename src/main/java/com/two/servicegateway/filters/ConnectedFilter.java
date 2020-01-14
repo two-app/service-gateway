@@ -9,14 +9,14 @@ import org.springframework.stereotype.Component;
 import static org.springframework.cloud.netflix.zuul.filters.support.FilterConstants.PRE_TYPE;
 
 @Component
-public class AuthorizationFilter extends ZuulFilter {
+public class ConnectedFilter extends ZuulFilter {
 
-    private final AuthWhiteList authWhiteList;
+    private final ConnectBlackList connectBlackList;
     private final JwtValidator jwtValidator;
 
     @Autowired
-    public AuthorizationFilter(AuthWhiteList authWhiteList, JwtValidator jwtValidator) {
-        this.authWhiteList = authWhiteList;
+    public ConnectedFilter(ConnectBlackList connectBlackList, JwtValidator jwtValidator) {
+        this.connectBlackList = connectBlackList;
         this.jwtValidator = jwtValidator;
     }
 
@@ -27,17 +27,12 @@ public class AuthorizationFilter extends ZuulFilter {
 
     @Override
     public int filterOrder() {
-        return 0;
+        return 1;
     }
 
-    /**
-     * @return filters if the route is not whitelisted.
-     */
     @Override
     public boolean shouldFilter() {
-        var ctx = RequestContext.getCurrentContext();
-        var req = ctx.getRequest();
-        return !authWhiteList.contains(req.getRequestURI(), req.getMethod());
+        return true;
     }
 
     @Override
@@ -45,7 +40,10 @@ public class AuthorizationFilter extends ZuulFilter {
         var ctx = RequestContext.getCurrentContext();
         var req = ctx.getRequest();
 
-        if (!jwtValidator.isTokenValid(req.getHeader("Authorization"))) {
+        boolean routeRequiresConnectToken = connectBlackList.contains(req.getRequestURI(), req.getMethod());
+        boolean isConnectToken = jwtValidator.isConnectToken(req.getHeader("Authorization"));
+
+        if ((routeRequiresConnectToken && !isConnectToken) || (!routeRequiresConnectToken && isConnectToken)) {
             ctx.setResponseStatusCode(HttpStatus.SC_UNAUTHORIZED);
             ctx.unset();
         }

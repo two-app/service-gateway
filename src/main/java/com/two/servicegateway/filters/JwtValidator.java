@@ -13,18 +13,34 @@ public class JwtValidator {
     private final Algorithm algorithm = Algorithm.HMAC256("NOT_THE_REAL_SECRET");
 
     public boolean isTokenValid(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer")) return false;
-
-        var authParts = authHeader.split(" ");
-        if (authParts.length != 2) return false;
-        var token = authParts[1];
-
         try {
+            var token = getToken(authHeader);
             JWT.require(algorithm).build().verify(token);
             return true;
+        } catch (IllegalArgumentException e) {
+            logger.warn("Failed to extract token.", e);
+            return false;
         } catch (JWTVerificationException e) {
-            logger.warn("Failed to validate request.");
+            logger.warn("Failed to validate request.", e);
             return false;
         }
+    }
+
+    public boolean isConnectToken(String authHeader) {
+        try {
+            var token = getToken(authHeader);
+            return !JWT.decode(token).getClaim("connectCode").isNull();
+        } catch (IllegalArgumentException e) {
+            logger.warn("Failed to extract token.", e);
+            return false;
+        }
+    }
+
+    private String getToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer")) throw new IllegalArgumentException();
+
+        var authParts = authHeader.split(" ");
+        if (authParts.length != 2) throw new IllegalArgumentException();
+        return authParts[1];
     }
 }

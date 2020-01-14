@@ -1,6 +1,7 @@
 package com.two.servicegateway.filters;
 
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class Route {
     public final String path;
@@ -21,6 +22,10 @@ public class Route {
 
     static Route POST(String path) {
         return new Route(path, "POST");
+    }
+
+    public boolean equalsRegex(String regex) {
+        return Pattern.matches(regex, this.path);
     }
 
     @Override
